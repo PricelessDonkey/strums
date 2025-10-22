@@ -235,6 +235,16 @@
     </div>
 
     <script>
+        function unlockAudio() {
+            if (Tone.context.state !== "running") {
+                Tone.start();
+            }
+        }
+
+        document.documentElement.addEventListener("mousedown", unlockAudio, { once: true });
+        document.documentElement.addEventListener("touchstart", unlockAudio, { once: true });
+        document.documentElement.addEventListener("click", unlockAudio, { once: true });
+
         /* ---------- GLOBAL SOUND CHAIN ---------- */
         const reverb = new Tone.Reverb({ decay: 3, wet: 0.3 }).toDestination();
         const delay = new Tone.FeedbackDelay("8n", 0.4);
@@ -357,6 +367,7 @@
                 const pad = document.createElement("div");
                 pad.className = "strum-note";
                 pad.textContent = note;
+                pad.dataset.note = note;
                 let currentVelocity = 1;
 
                 const updateVelocity = (x) => {
@@ -383,31 +394,51 @@
                 });
 
                 // --- Touch Support ---
-                pad.addEventListener("touchstart", e => {
-                    const rect = pad.getBoundingClientRect();
+                // Global touch tracking for sliding between pads
+                let lastTouchedPad = {};
+
+                strumPad.addEventListener("touchstart", e => {
                     for (const touch of e.changedTouches) {
-                        const x = touch.clientX - rect.left;
-                        const velocity = Math.min(1, Math.max(0, x / rect.width));
-                        startNote(note, velocity, pad, touch.identifier);
+                        const pad = document.elementFromPoint(touch.clientX, touch.clientY)?.closest(".strum-note");
+                        if (pad && pad.dataset.note) {
+                            const rect = pad.getBoundingClientRect();
+                            const x = touch.clientX - rect.left;
+                            const velocity = Math.min(1, Math.max(0, x / rect.width));
+                            startNote(pad.dataset.note, velocity, pad, touch.identifier);
+                            lastTouchedPad[touch.identifier] = pad;
+                        }
                     }
                 }, { passive: true });
 
-                pad.addEventListener("touchmove", e => {
-                    const rect = pad.getBoundingClientRect();
+                strumPad.addEventListener("touchmove", e => {
                     for (const touch of e.changedTouches) {
-                        const x = touch.clientX - rect.left;
-                        const velocity = Math.min(1, Math.max(0, x / rect.width));
-                        const key = `${note}-${touch.identifier}`;
-                        if (activeNotes[key]) {
-                            activeNotes[key].gain.gain.value = velocity;
-                            const colorVal = Math.floor(255 * velocity);
-                            pad.style.background = `rgb(${colorVal}, ${colorVal}, 0)`;
+                        const pad = document.elementFromPoint(touch.clientX, touch.clientY)?.closest(".strum-note");
+                        const prevPad = lastTouchedPad[touch.identifier];
+                        if (pad !== prevPad) {
+                            if (prevPad) stopNote(prevPad.dataset.note, touch.identifier);
+                            if (pad && pad.dataset.note) {
+                                const rect = pad.getBoundingClientRect();
+                                const x = touch.clientX - rect.left;
+                                const velocity = Math.min(1, Math.max(0, x / rect.width));
+                                startNote(pad.dataset.note, velocity, pad, touch.identifier);
+                                lastTouchedPad[touch.identifier] = pad;
+                            }
+                        } else if (pad) {
+                            const rect = pad.getBoundingClientRect();
+                            const x = touch.clientX - rect.left;
+                            const velocity = Math.min(1, Math.max(0, x / rect.width));
+                            const key = `${pad.dataset.note}-${touch.identifier}`;
+                            if (activeNotes[key]) activeNotes[key].gain.gain.value = velocity;
                         }
                     }
                 });
 
-                pad.addEventListener("touchend", e => {
-                    for (const touch of e.changedTouches) stopNote(note, touch.identifier);
+                strumPad.addEventListener("touchend", e => {
+                    for (const touch of e.changedTouches) {
+                        const prevPad = lastTouchedPad[touch.identifier];
+                        if (prevPad) stopNote(prevPad.dataset.note, touch.identifier);
+                        delete lastTouchedPad[touch.identifier];
+                    }
                 });
 
                 pad.addEventListener("touchcancel", e => {
