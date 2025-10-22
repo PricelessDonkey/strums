@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orchid Synth</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: sans-serif;
+            background: #111;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        header {
+            background: #222;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .tabs {
+            display: flex;
+            background: #333;
+        }
+
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 1rem;
+            background: #333;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .tab.active {
+            background: #555;
+        }
+
+        .content {
+            display: none;
+            flex-direction: column;
+            height: calc(100% - 144px);
+            padding: 1rem;
+        }
+
+        .content.active {
+            display: flex;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 0.5rem;
+        }
+
+        select {
+            font-size: 1rem;
+        }
+
+        .play-area {
+            flex: 1;
+            display: flex;
+        }
+
+        .column {
+            flex: 1;
+            padding: 0.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chordButtons {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+        }
+
+        .chord-button {
+            flex: 1;
+            margin: 2px 0;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 4px;
+            background: #444;
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        .chord-button.active {
+            background: #88f;
+        }
+
+        .strum-pad {
+            display: flex;
+            flex-direction: column-reverse;
+            height: 100%;
+        }
+
+        .strum-note {
+            flex: 1;
+            margin: 1px 0;
+            border-radius: 4px;
+            background: #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            cursor: pointer;
+            touch-action: none;
+            transition: background 0.1s;
+        }
+
+        .sound-controls label {
+            display: block;
+            margin: 1rem 0 0.3rem;
+        }
+
+        .sound-controls input[type=range] {
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Orchid Synth</h1>
+    </header>
+    <div class="tabs">
+        <button class="tab active" data-tab="play">Playable Controls</button>
+        <button class="tab" data-tab="sound">Sound Parameters</button>
+    </div>
+
+    <div class="content active" id="play">
+        <div class="controls">
+            <label>Scale:
+                <select id="scaleSelect">
+                    <!-- Traditional -->
+                    <optgroup label="Traditional">
+                        <option value="major">Major</option>
+                        <option value="minor">Minor</option>
+                        <option value="harmonic_minor">Harmonic Minor</option>
+                        <option value="melodic_minor">Melodic Minor</option>
+                        <option value="pentatonic">Pentatonic</option>
+                        <option value="minor_pentatonic">Minor Pentatonic</option>
+                        <option value="blues">Blues</option>
+                    </optgroup>
+
+                    <!-- Jazz & Modal Flavors -->
+                    <optgroup label="Jazz & Modal">
+                        <option value="dorian">Dorian</option>
+                        <option value="phrygian">Phrygian</option>
+                        <option value="lydian">Lydian</option>
+                        <option value="mixolydian">Mixolydian</option>
+                        <option value="locrian">Locrian</option>
+                    </optgroup>
+
+                    <!-- Advanced Jazz & Altered -->
+                    <optgroup label="Advanced Jazz & Altered">
+                        <option value="lydian_dominant">Lydian Dominant</option>
+                        <option value="altered">Altered</option>
+                        <option value="whole_tone">Whole Tone</option>
+                        <option value="diminished_half_whole">Diminished (Half-Whole)</option>
+                        <option value="diminished_whole_half">Diminished (Whole-Half)</option>
+                    </optgroup>
+
+                    <!-- Exotic Jazz Colors -->
+                    <optgroup label="Exotic & Bebop">
+                        <option value="bebop_major">Bebop Major</option>
+                        <option value="bebop_dominant">Bebop Dominant</option>
+                        <option value="bebop_minor">Bebop Minor</option>
+                        <option value="spanish_phrygian">Spanish Phrygian</option>
+                        <option value="lydian_augmented">Lydian Augmented</option>
+                        <option value="double_harmonic">Double Harmonic</option>
+                    </optgroup>
+
+                    <!-- Modern & Synthetic -->
+                    <optgroup label="Modern & Synthetic">
+                        <option value="hexatonic_blues">Hexatonic Blues</option>
+                        <option value="tritone_scale">Tritone Scale</option>
+                        <option value="lydian_b7">Lydian ♭7</option>
+                    </optgroup>
+                </select>
+            </label>
+            <label>Tonic:
+                <select id="tonicSelect">
+                    <option>C</option>
+                    <option>C#</option>
+                    <option>D</option>
+                    <option>Eb</option>
+                    <option>E</option>
+                    <option>F</option>
+                    <option>F#</option>
+                    <option>G</option>
+                    <option>Ab</option>
+                    <option>A</option>
+                    <option>Bb</option>
+                    <option>B</option>
+                </select>
+            </label>
+        </div>
+        <div class="play-area">
+            <div class="column" id="chordButtons"></div>
+            <div class="column">
+                <div class="strum-pad" id="strumPad"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content" id="sound">
+        <div class="sound-controls">
+            <label for="filter">Filter Cutoff</label>
+            <input type="range" id="filter" min="100" max="10000" value="2000" step="10">
+            <label for="modulation">FM Modulation Index</label>
+            <input type="range" id="modulation" min="0" max="100" value="50">
+            <label for="attack">Attack</label>
+            <input type="range" id="attack" min="0" max="2" value="0.1" step="0.01">
+            <label for="release">Release</label>
+            <input type="range" id="release" min="0" max="5" value="0.5" step="0.1">
+            <label for="reverb">Reverb Wet</label>
+            <input type="range" id="reverb" min="0" max="1" value="0.3" step="0.01">
+            <label for="delay">Delay Wet</label>
+            <input type="range" id="delay" min="0" max="1" value="0.3" step="0.01">
+        </div>
+    </div>
+
+    <script>
+        /* ---------- GLOBAL SOUND CHAIN ---------- */
+        const reverb = new Tone.Reverb({ decay: 3, wet: 0.3 }).toDestination();
+        const delay = new Tone.FeedbackDelay("8n", 0.4);
+        delay.wet.value = 0.3;
+        delay.connect(reverb);
+
+        const filter = new Tone.Filter(2000, "lowpass");
+        filter.connect(delay);
+
+        const baseSynth = {
+            harmonicity: 3,
+            modulationIndex: 50,
+            oscillator: { type: "sine" },
+            modulation: { type: "square" },
+            envelope: { attack: 0.1, decay: 0.2, sustain: 0.7, release: 0.5 }
+        };
+
+        /* ---------- UI LOGIC ---------- */
+        const SCALES = {
+            // Traditional
+            major: [0, 2, 4, 5, 7, 9, 11],
+            minor: [0, 2, 3, 5, 7, 8, 10],
+            harmonic_minor: [0, 2, 3, 5, 7, 8, 11],
+            melodic_minor: [0, 2, 3, 5, 7, 9, 11],
+            pentatonic: [0, 2, 4, 7, 9],
+            minor_pentatonic: [0, 3, 5, 7, 10],
+            blues: [0, 3, 5, 6, 7, 10],
+
+            // Jazz and modal flavors
+            dorian: [0, 2, 3, 5, 7, 9, 10],
+            phrygian: [0, 1, 3, 5, 7, 8, 10],
+            lydian: [0, 2, 4, 6, 7, 9, 11],
+            mixolydian: [0, 2, 4, 5, 7, 9, 10],
+            locrian: [0, 1, 3, 5, 6, 8, 10],
+
+            // Advanced jazz & altered
+            lydian_dominant: [0, 2, 4, 6, 7, 9, 10],       // 4th mode of melodic minor
+            altered: [0, 1, 3, 4, 6, 8, 10],              // 7th mode of melodic minor
+            whole_tone: [0, 2, 4, 6, 8, 10],              // for augmented dominant chords
+            diminished_half_whole: [0, 1, 3, 4, 6, 7, 9, 10], // for dominant b9/#9 chords
+            diminished_whole_half: [0, 2, 3, 5, 6, 8, 9, 11], // for dim7 chords
+
+            // Exotic jazz colors
+            bebop_major: [0, 2, 4, 5, 7, 8, 9, 11],        // adds chromatic passing tone between 5–6
+            bebop_dominant: [0, 2, 4, 5, 7, 9, 10, 11],    // adds major 7 to Mixolydian
+            bebop_minor: [0, 2, 3, 5, 7, 8, 9, 10],        // adds natural 7 to Dorian
+            spanish_phrygian: [0, 1, 4, 5, 7, 8, 10],      // aka Phrygian Dominant
+            lydian_augmented: [0, 2, 4, 6, 8, 9, 11],      // 3rd mode of melodic minor
+            double_harmonic: [0, 1, 4, 5, 7, 8, 11],       // "Byzantine" / "Hungarian" flavor
+
+            // Modern synthetic colors
+            hexatonic_blues: [0, 3, 5, 6, 7, 10],
+            tritone_scale: [0, 1, 4, 6, 8, 10],            // symmetric, used over dominant chords
+            lydian_b7: [0, 2, 4, 6, 7, 9, 10],             // Lydian Dominant variant for V7sus chords
+        };
+        const NOTES = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+        let selectedChord = [];
+        let activeNotes = {};
+        let currentRelease = 0.5;
+
+        document.documentElement.addEventListener("mousedown", () => {
+            if (Tone.context.state !== "running") Tone.start();
+        }, { once: true });
+
+        /* tab switch */
+        const tabs = document.querySelectorAll(".tab");
+        const contents = document.querySelectorAll(".content");
+        tabs.forEach(t => t.addEventListener("click", () => {
+            tabs.forEach(x => x.classList.remove("active"));
+            contents.forEach(x => x.classList.remove("active"));
+            t.classList.add("active");
+            document.getElementById(t.dataset.tab).classList.add("active");
+        }));
+
+        const chordButtons = document.getElementById("chordButtons");
+        const strumPad = document.getElementById("strumPad");
+
+        const buildScale = (root, type) => {
+            const rootIdx = NOTES.indexOf(root);
+            return SCALES[type].map(i => NOTES[(rootIdx + i) % 12]);
+        };
+
+        function updateChordButtons() {
+            const scale = document.getElementById("scaleSelect").value;
+            const tonic = document.getElementById("tonicSelect").value;
+            const scaleNotes = buildScale(tonic, scale);
+            chordButtons.innerHTML = "";
+            scaleNotes.forEach((note, i) => {
+                // build 7th chord
+                const chord = [
+                    scaleNotes[i],
+                    scaleNotes[(i + 2) % scaleNotes.length],
+                    scaleNotes[(i + 4) % scaleNotes.length],
+                    scaleNotes[(i + 6) % scaleNotes.length]
+                ];
+                const btn = document.createElement("button");
+                btn.className = "chord-button";
+                btn.textContent = `${note}7`;
+                btn.onclick = () => {
+                    document.querySelectorAll(".chord-button").forEach(b => b.classList.remove("active"));
+                    btn.classList.add("active");
+                    selectedChord = [];
+                    for (let oct = 5; oct >= 3; oct--) {
+                        chord.forEach(n => selectedChord.push(n + oct));
+                    }
+                    buildStrumPad();
+                };
+                chordButtons.appendChild(btn);
+            });
+        }
+        updateChordButtons();
+        document.getElementById("scaleSelect").onchange = updateChordButtons;
+        document.getElementById("tonicSelect").onchange = updateChordButtons;
+
+        /* ---------- PLAY AREA ---------- */
+        function buildStrumPad() {
+            strumPad.innerHTML = "";
+            selectedChord.forEach(note => {
+                const pad = document.createElement("div");
+                pad.className = "strum-note";
+                pad.textContent = note;
+                let currentVelocity = 1;
+
+                const updateVelocity = (x) => {
+                    const velocity = Math.min(1, Math.max(0, x / pad.clientWidth));
+                    currentVelocity = velocity;
+                    const colorVal = Math.floor(255 * velocity);
+                    pad.style.background = `rgb(${colorVal}, ${colorVal}, 0)`;
+                    const active = activeNotes[note];
+                    if (active) active.gain.gain.value = velocity;
+                };
+
+                pad.addEventListener("mouseenter", e => {
+                    startNote(note, currentVelocity, pad);
+                });
+
+                pad.addEventListener("mousemove", e => {
+                    if (activeNotes[note]) {
+                        updateVelocity(e.offsetX);
+                    }
+                });
+
+                pad.addEventListener("mouseleave", e => {
+                    stopNote(note);
+                });
+
+                // --- Touch Support ---
+                pad.addEventListener("touchstart", e => {
+                    const rect = pad.getBoundingClientRect();
+                    for (const touch of e.changedTouches) {
+                        const x = touch.clientX - rect.left;
+                        const velocity = Math.min(1, Math.max(0, x / rect.width));
+                        startNote(note, velocity, pad, touch.identifier);
+                    }
+                }, { passive: true });
+
+                pad.addEventListener("touchmove", e => {
+                    const rect = pad.getBoundingClientRect();
+                    for (const touch of e.changedTouches) {
+                        const x = touch.clientX - rect.left;
+                        const velocity = Math.min(1, Math.max(0, x / rect.width));
+                        const key = `${note}-${touch.identifier}`;
+                        if (activeNotes[key]) {
+                            activeNotes[key].gain.gain.value = velocity;
+                            const colorVal = Math.floor(255 * velocity);
+                            pad.style.background = `rgb(${colorVal}, ${colorVal}, 0)`;
+                        }
+                    }
+                });
+
+                pad.addEventListener("touchend", e => {
+                    for (const touch of e.changedTouches) stopNote(note, touch.identifier);
+                });
+
+                pad.addEventListener("touchcancel", e => {
+                    for (const touch of e.changedTouches) stopNote(note, touch.identifier);
+                });
+
+                strumPad.prepend(pad);
+            });
+        }
+
+        function startNote(note, velocity, pad, id = null) {
+            const key = id !== null ? `${note}-${id}` : note;
+            if (activeNotes[key]) return;
+
+            const gain = new Tone.Gain(velocity).connect(filter);
+            const synth = new Tone.FMSynth({ ...baseSynth }).connect(gain);
+            synth.triggerAttack(note);
+
+            activeNotes[key] = { synth, gain, pad };
+            const colorVal = Math.floor(255 * velocity);
+            pad.style.background = `rgb(${colorVal}, ${colorVal}, 0)`;
+        }
+
+        function stopNote(note, id = null) {
+            const key = id !== null ? `${note}-${id}` : note;
+            const a = activeNotes[key];
+            if (!a) return;
+            a.synth.triggerRelease();
+            setTimeout(() => { a.synth.dispose(); a.gain.dispose(); }, currentRelease * 1000 + 200);
+            a.pad.style.background = "#666";
+            delete activeNotes[key];
+        }
+
+        /* ---------- SOUND CONTROL BINDINGS ---------- */
+        document.getElementById("filter").addEventListener("input", e => {
+            filter.frequency.value = parseFloat(e.target.value);
+        });
+        document.getElementById("modulation").addEventListener("input", e => {
+            baseSynth.modulationIndex = parseFloat(e.target.value);
+        });
+        document.getElementById("attack").addEventListener("input", e => {
+            baseSynth.envelope.attack = parseFloat(e.target.value);
+        });
+        document.getElementById("release").addEventListener("input", e => {
+            baseSynth.envelope.release = parseFloat(e.target.value);
+            currentRelease = baseSynth.envelope.release;
+        });
+        document.getElementById("reverb").addEventListener("input", e => {
+            reverb.wet.value = parseFloat(e.target.value);
+        });
+        document.getElementById("delay").addEventListener("input", e => {
+            delay.wet.value = parseFloat(e.target.value);
+        });
+    </script>
+</body>
+
+</html>
